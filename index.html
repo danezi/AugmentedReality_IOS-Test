@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebAR – neuerHafen (Barcode-Marker)</title>
+
+    <!-- A-Frame + AR.js -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <style>
+      body, html {
+        margin: 0;
+        overflow: hidden;
+        height: 100%;
+        background-color: #000;
+      }
+      #info {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-family: sans-serif;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 8px 12px;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="info">
+      <h3>WebAR – neuerHafen.glb</h3>
+      <p>Scanne den Barcode-Marker mit der Kamera.</p>
+      <p><b>Marker-Typ:</b> Barcode ID 5</p>
+    </div>
+
+    <!-- A-Frame Szene mit AR.js -->
+    <a-scene
+      vr-mode-ui="enabled: false"
+      embedded
+      arjs="trackingMethod: best; sourceType: webcam;">
+
+      <!-- Barcode-Marker (keine .patt-Datei nötig) -->
+      <a-marker type="barcode" value="5">
+        <a-entity
+          gltf-model="./model/neuerHafen.glb"
+          scale="0.5 0.5 0.5"
+          rotation="0 180 0"
+          position="0 0 0">
+        </a-entity>
+      </a-marker>
+
+      <!-- Kamera -->
+      <a-entity camera></a-entity>
+    </a-scene>
+  </body>
+</html>
