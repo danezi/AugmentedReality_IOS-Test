@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebAR – neuerHafen (Barcode-Marker)</title>
 
-    <!-- A-Frame + AR.js -->
+    <!-- A-Frame + AR.js (stabile CDN-Version) -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
 
     <style>
       body, html {
@@ -41,10 +41,11 @@
       vr-mode-ui="enabled: false"
       embedded
       arjs="trackingMethod: best; sourceType: webcam;">
-
-      <!-- Barcode-Marker (keine .patt-Datei nötig) -->
+      
+      <!-- Barcode-Marker -->
       <a-marker type="barcode" value="5">
         <a-entity
+          id="hafenModel"
           gltf-model="./model/neuerHafen.glb"
           scale="0.5 0.5 0.5"
           rotation="0 180 0"
@@ -55,5 +56,25 @@
       <!-- Kamera -->
       <a-entity camera></a-entity>
     </a-scene>
+
+    <!-- main.js direkt eingebettet -->
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        const model = document.getElementById("hafenModel");
+
+        if (!model) {
+          console.warn("⚠️ Kein Element mit ID 'hafenModel' gefunden.");
+          return;
+        }
+
+        model.addEventListener("model-loaded", () => {
+          console.log("✅ neuerHafen.glb erfolgreich geladen!");
+        });
+
+        model.addEventListener("arjs-nft-loaded", () => {
+          console.log("📱 AR.js Tracking bereit.");
+        });
+      });
+    </script>
   </body>
 </html>
