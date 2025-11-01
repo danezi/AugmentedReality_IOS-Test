@@ -1,81 +1,306 @@
 <!DOCTYPE html>
 <html lang="de">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebAR – neuerHafen (Barcode-Marker)</title>
+    <title>WebAR – neuerHafen (Markerless)</title>
 
-    <!-- A-Frame + AR.js (stabile CDN-Version) -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.0/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-look-at-billboard-component@0.1.1/dist/aframe-look-at-billboard-component.min.js"></script>
 
     <style>
-      body, html {
-        margin: 0;
-        overflow: hidden;
-        height: 100%;
-        background-color: #000;
-      }
-      #info {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        color: white;
-        font-family: sans-serif;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 8px 12px;
-        border-radius: 8px;
-      }
-    </style>
-  </head>
-
-  <body>
-    <div id="info">
-      <h3>WebAR – neuerHafen.glb</h3>
-      <p>Scanne den Barcode-Marker mit der Kamera.</p>
-      <p><b>Marker-Typ:</b> Barcode ID 5</p>
-    </div>
-
-    <!-- A-Frame Szene mit AR.js -->
-    <a-scene
-      vr-mode-ui="enabled: false"
-      embedded
-      arjs="trackingMethod: best; sourceType: webcam; deviceId: environment;">
-
-      
-      <!-- Barcode-Marker -->
-      <a-marker type="barcode" value="5">
-        <a-entity
-          id="hafenModel"
-          gltf-model="./3DModel/neuerHafen.glb"
-          scale="0.5 0.5 0.5"
-          rotation="0 180 0"
-          position="0 0 0">
-        </a-entity>
-      </a-marker>
-
-      <!-- Kamera -->
-      <a-entity camera></a-entity>
-    </a-scene>
-
-    <!-- main.js direkt eingebettet -->
-    <script>
-      window.addEventListener("DOMContentLoaded", () => {
-        const model = document.getElementById("hafenModel");
-
-        if (!model) {
-          console.warn("⚠️ Kein Element mit ID 'hafenModel' gefunden.");
-          return;
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            background: black;
+            font-family: 'Arial', sans-serif;
         }
 
-        model.addEventListener("model-loaded", () => {
-          console.log("✅ neuerHafen.glb erfolgreich geladen!");
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 15px;
+            z-index: 1000;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 90%;
+        }
+
+        #info h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+
+        #info p {
+            margin: 5px 0;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        #placement-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            background: rgba(76, 175, 80, 0.9);
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 999;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">
+        <h3>🚢 AR Hafen-Erlebnis</h3>
+        <p>📱 <strong>Bewege dein Gerät</strong> um eine Fläche zu scannen</p>
+        <p>👆 <strong>Tippe</strong> um das 3D-Modell zu platzieren</p>
+    </div>
+
+    <div id="loading">
+        <div style="font-size: 32px; margin-bottom: 15px;">🌊</div>
+        <div style="font-size: 18px; margin-bottom: 10px;">AR wird geladen...</div>
+        <div style="font-size: 14px; opacity: 0.7;">Bitte Kamerazugriff erlauben</div>
+    </div>
+
+    <div id="placement-hint">
+        <div style="font-size: 24px; margin-bottom: 10px;">📍</div>
+        <div>Fläche gefunden! Tippe zum Platzieren</div>
+    </div>
+
+    <div id="controls">
+        <button class="control-btn" onclick="rotateModel()">🔄 Drehen</button>
+        <button class="control-btn" onclick="scaleModel()">📏 Größe</button>
+        <button class="control-btn" onclick="resetModel()">🔄 Reset</button>
+    </div>
+
+    <!-- A-Frame Scene -->
+    <a-scene
+        embedded
+        vr-mode-ui="enabled: false"
+        arjs="
+            sourceType: webcam;
+            debugUIEnabled: false;
+            detectionMode: mono;
+            matrixCodeType: 3x3;
+            cameraParametersUrl: https://cdn.jsdelivr.net/npm/ar.js@3.4.0/data/data/camera_para.dat;
+        "
+        renderer="colorManagement: true;"
+        stats
+    >
+
+        <!-- Markerless AR Entity -->
+        <a-entity 
+            id="hafenModel"
+            gltf-model="url(./3DModel/neuerHafen.glb)"
+            scale="0.8 0.8 0.8"
+            rotation="0 180 0"
+            position="0 0.5 0"
+            gesture-handler="minScale: 0.3; maxScale: 2.0;"
+            arjs-hit-test="target: #hafenModel;"
+            visible="false"
+        >
+        </a-entity>
+
+        <!-- Hit Testing für Markerless Placement -->
+        <a-entity 
+            arjs-hit-test="enabled: true; type: gps;"
+            cursor="rayOrigin: mouse; fuse: false;"
+            raycaster="objects: .clickable; far: 30;"
+            position="0 0 -1"
+        >
+        </a-entity>
+
+        <!-- Kamera -->
+        <a-entity camera></a-entity>
+
+        <!-- Beleuchtung -->
+        <a-entity light="type: ambient; color: #888; intensity: 0.9"></a-entity>
+        <a-entity light="type: directional; color: #FFFFFF; intensity: 0.8; position: 3 5 4"></a-entity>
+        <a-entity light="type: point; color: #4FC3F7; intensity: 0.6; position: -2 3 1"></a-entity>
+
+    </a-scene>
+
+    <script>
+        // Warte bis die Scene geladen ist
+        document.querySelector('a-scene').addEventListener('loaded', function() {
+            console.log('✅ AR Scene geladen');
+            
+            const loading = document.getElementById('loading');
+            const placementHint = document.getElementById('placement-hint');
+            const model = document.getElementById('hafenModel');
+            
+            // Verstecke Loading Screen nach 2 Sekunden
+            setTimeout(() => {
+                if (loading) loading.style.display = 'none';
+                if (placementHint) placementHint.style.display = 'block';
+            }, 2000);
+
+            // Model Load Event
+            if (model) {
+                model.addEventListener('model-loaded', function() {
+                    console.log('✅ 3D-Modell erfolgreich geladen!');
+                    model.setAttribute('visible', 'true');
+                    model.classList.add('clickable');
+                    
+                    // Verstecke Placement Hint nach Modell-Load
+                    setTimeout(() => {
+                        if (placementHint) placementHint.style.display = 'none';
+                    }, 3000);
+                });
+
+                model.addEventListener('model-error', function(evt) {
+                    console.error('❌ Fehler beim Laden des 3D-Modells:', evt.detail);
+                    showError('3D-Modell konnte nicht geladen werden');
+                });
+            }
+
+            // Hit Test Events
+            document.querySelector('a-scene').addEventListener('click', function(evt) {
+                const hitPoint = evt.detail.intersection.point;
+                
+                if (model) {
+                    // Setze Modell an die getippte Position
+                    model.setAttribute('position', {
+                        x: hitPoint.x,
+                        y: hitPoint.y + 0.5, // Etwas über dem Boden
+                        z: hitPoint.z
+                    });
+                    model.setAttribute('visible', 'true');
+                    
+                    // Verstecke Placement Hint nach erstem Placement
+                    if (placementHint) placementHint.style.display = 'none';
+                    
+                    console.log('📍 Modell platziert an:', hitPoint);
+                }
+            });
         });
 
-        model.addEventListener("arjs-nft-loaded", () => {
-          console.log("📱 AR.js Tracking bereit.");
+        // Steuerungs-Funktionen
+        let currentRotation = 180;
+        let currentScale = 0.8;
+
+        function rotateModel() {
+            const model = document.getElementById('hafenModel');
+            if (model) {
+                currentRotation += 90;
+                model.setAttribute('rotation', `0 ${currentRotation} 0`);
+            }
+        }
+
+        function scaleModel() {
+            const model = document.getElementById('hafenModel');
+            if (model) {
+                // Wechsel zwischen drei Größen
+                const scales = [0.5, 0.8, 1.2];
+                const currentIndex = scales.indexOf(currentScale);
+                const nextIndex = (currentIndex + 1) % scales.length;
+                currentScale = scales[nextIndex];
+                
+                model.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+            }
+        }
+
+        function resetModel() {
+            const model = document.getElementById('hafenModel');
+            if (model) {
+                model.setAttribute('position', '0 0.5 0');
+                model.setAttribute('rotation', '0 180 0');
+                model.setAttribute('scale', '0.8 0.8 0.8');
+                currentRotation = 180;
+                currentScale = 0.8;
+            }
+        }
+
+        // Fehlerbehandlung
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: #ff6b6b;
+                background: rgba(0, 0, 0, 0.9);
+                padding: 20px;
+                border-radius: 10px;
+                text-align: center;
+                z-index: 1000;
+            `;
+            errorDiv.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 10px;">❌</div>
+                <div>${message}</div>
+            `;
+            document.body.appendChild(errorDiv);
+            
+            setTimeout(() => {
+                document.body.removeChild(errorDiv);
+            }, 5000);
+        }
+
+        // Fullscreen Toggle
+        document.addEventListener('dblclick', function() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen();
+            }
         });
-      });
     </script>
-  </body>
+</body>
 </html>
