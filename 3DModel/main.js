@@ -61,32 +61,62 @@ function init() {
         function ( gltf ) {
             model = gltf.scene;
             
-            // --- DYNAMISCHE SKALIERUNG & ZENTRIERUNG ---
+            // --- VERBESSERTE, ROBUSTE SKALIERUNG & ZENTRIERUNG ---
+            // Vorgehen:
+            // 1) Bounding Box berechnen
+            // 2) Dynamisches Zielmaß wählen (für sehr große/kleine Modelle anpassen)
+            // 3) Scale-Faktor clampen (min/max) um Extremwerte zu verhindern
+            // 4) Modell skalieren, Box neu berechnen und auf Boden (y=0) zentrieren
+            model.updateMatrixWorld(true);
             const box = new THREE.Box3().setFromObject(model);
-            const size = box.getSize(new THREE.Vector3());   
-            const center = box.getCenter(new THREE.Vector3()); 
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
             
-            // 1. Skalierung: Setzt die größte Dimension auf 1.0 Meter (kann angepasst werden)
-            const targetSize = 1.0; 
+            // Max-Dimension des Modells (in GLB-Einheiten)
             const maxDim = Math.max(size.x, size.y, size.z);
-            const scaleFactor = targetSize / maxDim;
-            model.scale.set(scaleFactor, scaleFactor, scaleFactor);
-
-            // Nach Skalierung Box neu berechnen
+            
+            // Dynamisches Zielmaß: kleine Modelle etwas größer darstellen,
+            // sehr große Modelle hingegen nicht zu klein skalieren.
+            let targetSize = 1.0; // Standard (Meter)
+            if (maxDim > 8) targetSize = 3.0;
+            else if (maxDim > 4) targetSize = 2.0;
+            else if (maxDim < 0.2) targetSize = 0.6;
+            
+            // Roh-Skalierung
+            let scaleFactor = targetSize / maxDim;
+            
+            // Clamp: verhindert zu kleine oder zu große Skalierung
+            const MIN_SCALE = 0.01;
+            const MAX_SCALE = 10.0;
+            scaleFactor = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scaleFactor));
+            
+            model.scale.setScalar(scaleFactor);
+            
+            // Nach Skalierung Box neu berechnen und Boden-Höhe ermitteln
+            model.updateMatrixWorld(true);
             box.setFromObject(model);
             const scaledSize = box.getSize(new THREE.Vector3());
+            const newCenter = box.getCenter(new THREE.Vector3());
             
-            // 2. AR-Positionierung: Verschiebt den Ankerpunkt des Modells so, 
-            // dass die Unterkante des Modells auf y=0 (virtueller Boden) liegt.
-            // Das Modell wird ZENTRIERT und auf dem Boden platziert.
+            // y-Offset: sicherstellen, dass Unterkante auf y=0 sitzt (kleine Toleranz)
+            const bottomY = box.min.y;
+            const yOffset = -bottomY + 0.01; // 1cm Puffer
+            
+            // Position korrigieren: zentrieren (x,z) und auf Boden (y=0) setzen
             model.position.set(
-                -center.x * scaleFactor, 
-                -center.y * scaleFactor + (scaledSize.y / 2), 
-                -center.z * scaleFactor
-            ); 
-
+                -newCenter.x,         // x zentrieren
+                yOffset,              // y auf Boden
+                -newCenter.z          // z zentrieren
+            );
+            // Optional: für Desktop-Preview etwas größer darstellen (wenn nicht in AR)
+            if (!renderer.xr || !renderer.xr.isPresenting) {
+                // kleiner visueller Boost für Desktop; 1.0 = keine Änderung
+                const desktopBoost = 1.1;
+                model.scale.multiplyScalar(desktopBoost);
+            }
+ 
             scene.add( model );
-
+ 
             // Das Modell ist anfangs unsichtbar, bis es in der AR-Sitzung platziert wird.
             model.visible = false; 
 
@@ -146,7 +176,31 @@ function onSessionEnd() {
     }
 }
 
-// ... (Restliche Funktionen) ...
+// Neue Hilfsfunktion: temporärer Highlight-Effekt für angeklickte Meshes
+function applyTemporaryHighlight(object, hexColor = 0xffff00, duration = 800) {
+    const modified = [];
+    object.traverse((node) => {
+        if (node.isMesh && node.material) {
+            const mat = node.material;
+            // Backup falls noch nicht gespeichert
+            if (!mat.userData) mat.userData = {};
+            if (typeof mat.userData._origEmissive === 'undefined') {
+                mat.userData._origEmissive = mat.emissive ? mat.emissive.clone() : null;
+                mat.userData._origEmissiveIntensity = typeof mat.emissiveIntensity !== 'undefined' ? mat.emissiveIntensity : null;
+            }
+            if (mat.emissive) mat.emissive.set(hexColor);
+            if ('emissiveIntensity' in mat) mat.emissiveIntensity = 1.2;
+            modified.push(mat);
+        }
+    });
+    // Nach Dauer zurücksetzen
+    setTimeout(() => {
+        modified.forEach((mat) => {
+            if (mat.userData && mat.userData._origEmissive) mat.emissive.copy(mat.userData._origEmissive);
+            if (mat.userData && mat.userData._origEmissiveIntensity !== null) mat.emissiveIntensity = mat.userData._origEmissiveIntensity;
+        });
+    }, duration);
+}
 
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -182,6 +236,9 @@ function onPointerClick(event) {
     const intersects = raycaster.intersectObjects(model.children, true);
 
     if (intersects.length > 0) {
+        // Highlight auf dem angeklickten Mesh
+        applyTemporaryHighlight(intersects[0].object, 0xffaa00, 1000);
+
         const hitPoint = intersects[0].point; 
         const tempVector = new THREE.Vector3().copy(hitPoint);
         tempVector.project(camera);
