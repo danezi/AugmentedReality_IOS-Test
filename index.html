@@ -1,49 +1,66 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Neuer Hafen AR</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/@editmode/aframe-webxr-ar-mode-ui/dist/aframe-webxr-ar-mode-ui.js"></script>
+    <title>Three.js WebXR PoC</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+
+        /* Stil für die interaktive Info-Box */
+        #info-box {
+            /* ... (Ihr bestehender Stil) ... */
+        }
+        
+        /* NEU: Stil für den iOS-Fallback-Button */
+        #ios-fallback-button {
+            position: absolute; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            padding: 15px 30px; 
+            background-color: #007aff; 
+            color: white; 
+            font-size: 18px;
+            font-family: sans-serif;
+            border-radius: 10px;
+            text-decoration: none;
+            display: none; /* Am Anfang versteckt */
+            z-index: 1001;
+        }
+    </style>
 </head>
 <body>
-    <a-scene 
-        webxr="requiredFeatures: hit-test, local-floor; optionalFeatures: dom-overlay; referenceSpaceType: local;"
-        ar-mode-ui
-        renderer="logarithmicDepthBuffer: true;">
-        
-        <a-gltf-model 
-            src="./3DModel/neuerHafen.glb" 
-            scale="1 1 1" 
-            id="my-model"
-            gltf-model="draco: true;"
-            ></a-gltf-model>
-
-        <a-entity light="type: ambient; intensity: 1.0;"></a-entity>
-        <a-entity light="type: directional; intensity: 0.5;" position="1 1 1"></a-entity>
+    <div id="info-box">
+        <div id="info-content"></div>
+    </div>
     
-        <a-camera></a-camera>
-    </a-scene>
+    <a id="ios-fallback-button" href="./3DModel/neuerHafen.usdz" rel="ar">
+        AR mit iOS starten (Quick Look)
+    </a>
+
+    <script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.158.0/build/three.module.js" } }</script>
+    <script type="module" src="main.js"></script>
     
     <script>
-        // Dieses Script ermöglicht es, das Modell nach dem Laden zu bewegen (Platzieren via Hit-Test)
-        document.addEventListener('DOMContentLoaded', function() {
-            const scene = document.querySelector('a-scene');
-            const model = document.getElementById('my-model');
-            
-            scene.addEventListener('ar-hit-test-select', (event) => {
-                if (event.detail.results.length > 0) {
-                    const hit = event.detail.results[0];
-                    const matrix = hit.pose.transform.matrix;
-                    
-                    // Setzt das Modell an die erkannte Position auf der Oberfläche
-                    model.setAttribute('position', {
-                        x: matrix[12],
-                        y: matrix[13],
-                        z: matrix[14]
-                    });
-                }
-            });
-        });
+        function isIOS() {
+            // Vereinfachte iOS-Erkennung (funktioniert für die meisten iPhones/iPads)
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        }
+
+        if (isIOS()) {
+            // Verzögerung, um sicherzustellen, dass der Three.js ARButton erstellt wurde
+            setTimeout(() => {
+                const arButton = document.getElementById('ARButton'); // ID des Three.js ARButtons
+                const fallbackButton = document.getElementById('ios-fallback-button');
+                
+                // Den von Three.js erstellten Button verstecken
+                if (arButton) arButton.style.display = 'none';
+                
+                // Den nativen iOS-Fallback-Button anzeigen
+                if (fallbackButton) fallbackButton.style.display = 'block';
+                
+            }, 500); 
+        }
     </script>
 </body>
 </html>
