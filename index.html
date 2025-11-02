@@ -1,62 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Three.js WebXR PoC</title>
+    <title>Neuer Hafen WebXR AR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
-
-        /* Stil für die interaktive Info-Box */
-        #info-box {
-            /* ... (Ihr bestehender Stil) ... */
-        }
-        
-        /* NEU: Stil für den iOS-Fallback-Button */
-        #ios-fallback-button {
-            position: absolute; 
-            bottom: 20px; 
-            left: 50%; 
-            transform: translateX(-50%);
-            padding: 15px 30px; 
-            background-color: #007aff; 
-            color: white; 
-            font-size: 18px;
-            font-family: sans-serif;
-            border-radius: 10px;
-            text-decoration: none;
-            display: none; /* Am Anfang versteckt */
-            z-index: 1001;
-        }
+        /* Stil für die interaktive Info-Box (Ihr bestehender Stil) */
+        #info-box { position: absolute; top: 10px; left: 10px; padding: 15px; background-color: rgba(0, 0, 0, 0.7); color: white; font-family: sans-serif; border-radius: 5px; display: none; max-width: 300px; z-index: 1000; }
+        /* Stil für den iOS-Fallback-Button (Ihr bestehender Stil) */
+        #ios-fallback-button { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 30px; background-color: #007aff; color: white; font-size: 18px; font-family: sans-serif; border-radius: 10px; text-decoration: none; display: none; z-index: 1001; }
     </style>
 </head>
 <body>
-    <div id="info-box">
-        <div id="info-content"></div>
-    </div>
+    <div id="info-box"><div id="info-content"></div></div>
     
     <a id="ios-fallback-button" href="./3DModel/neuerHafen.usdz" rel="ar">
         AR mit iOS starten (Quick Look)
     </a>
 
-    <script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.158.0/build/three.module.js" } }</script>
+    <script type="importmap">
+        { 
+            "imports": { 
+                "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/" // Der Pfad für GLTFLoader/ARButton
+            } 
+        }
+    </script>
+    
     <script type="module" src="main.js"></script>
     
     <script>
         function isIOS() {
-            // Vereinfachte iOS-Erkennung (funktioniert für die meisten iPhones/iPads)
             return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         }
 
         if (isIOS()) {
-            // Verzögerung, um sicherzustellen, dass der Three.js ARButton erstellt wurde
             setTimeout(() => {
-                const arButton = document.getElementById('ARButton'); // ID des Three.js ARButtons
+                const arButton = document.getElementById('ARButton'); 
                 const fallbackButton = document.getElementById('ios-fallback-button');
                 
-                // Den von Three.js erstellten Button verstecken
                 if (arButton) arButton.style.display = 'none';
-                
-                // Den nativen iOS-Fallback-Button anzeigen
                 if (fallbackButton) fallbackButton.style.display = 'block';
                 
             }, 500); 
